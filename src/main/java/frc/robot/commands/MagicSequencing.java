@@ -27,7 +27,7 @@ public class MagicSequencing {
      */
     public static final Command magicScoreNoScoreReef(CommandSwerveDrivetrain drive,Supplier<Pose2d> reefPosition) {
         return drive.pathfindToPose(reefPosition.get())//先规划路径
-                .andThen(drive.translateToPositionWithPID(reefPosition.get()).until(drive.translatePidInPosition()));
+                .andThen(drive.translateToPositionWithPID(reefPosition.get()));
     }
 
     public static final Command magicScoreNoScoreReefOnlyPID(CommandSwerveDrivetrain drive, Supplier<Pose2d> reefPosition) {

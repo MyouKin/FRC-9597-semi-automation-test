@@ -61,6 +61,7 @@ import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.PIDCommand;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
@@ -212,8 +213,9 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         }
         
         //0.00635 = 0.25 inch
-        pidLineup.setTolerance(0.1);
-        angleController.setTolerance(Units.degreesToRadians(1));
+        pidLineup.setTolerance(0.05);
+        angleController.setTolerance(Units.degreesToRadians(5));
+
         angleController.enableContinuousInput(0, 2 * Math.PI);
 
         // initialize camera system
@@ -425,47 +427,51 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     }
 
 /********************************************************************** vision end *********************************************************** */
-
-
     @SuppressWarnings("removal")
     public Command translateToPositionWithPID(Pose2d pose) {
         DoubleSupplier theta = () -> new Pose2d(pose.getTranslation(), new Rotation2d())//计算目标方向角
                 .relativeTo(new Pose2d(getPose().getTranslation(), new Rotation2d()))
                 .getTranslation().getAngle().getRadians();
+        
         DoubleSupplier driveYaw = () -> (getRotation().getRadians() + 2 * Math.PI) % (2 * Math.PI);//获取当前朝向角
-        return new PIDCommand(pidLineup,//pid直线控制器
-                () -> -new Pose2d(pose.getTranslation(), new Rotation2d())
-                        .relativeTo(new Pose2d(getPose().getTranslation(), new Rotation2d())).getTranslation()
-                        .getNorm(),//过程中的当前位置与目标的距离
-                0, //目标距离为 0，即到达目标位置
-                (d) -> {//控制动作部分
-                    inPidTranslate = true;
-                    if (pidLineup.atSetpoint()) {//到位停止
-                        stop();
-                        return;
-                    }
-                    runVelocity(ChassisSpeeds.fromFieldRelativeSpeeds(new ChassisSpeeds(//输入指定速度，控制底盘到位
-                            MathUtils.clamp(d * Math.cos(theta.getAsDouble()), -PID_TRANSLATION_SPEED_MPS,
-                                    PID_TRANSLATION_SPEED_MPS),//计算Vx速度
-                            MathUtils.clamp(d * Math.sin(theta.getAsDouble()), -PID_TRANSLATION_SPEED_MPS,
-                                    PID_TRANSLATION_SPEED_MPS),//计算Vy速度
-                            MathUtils.clamp(
-                                    angleController.calculate(driveYaw.getAsDouble(), pose.getRotation().getRadians()),
-                                    -PID_ROTATION_RAD_PER_SEC, PID_ROTATION_RAD_PER_SEC)),//计算角速度
-                            getRotation()));
-                }, 
-                this).
-                finallyDo(i -> {//命令结束时执行，reset各种参数
-                    inPidTranslate = false;
-                    pidLineup.reset();
-                    angleController.reset();
-                    stop();
-                });
+        
+        DoubleSupplier distanceToTarget = () -> -new Pose2d(pose.getTranslation(), new Rotation2d())
+                .relativeTo(new Pose2d(getPose().getTranslation(), new Rotation2d()))
+                .getTranslation().getNorm();//当前位置与目标的距离
+        
+        return new PIDCommand(
+            pidLineup, // PID控制器
+            distanceToTarget, // 测量值供应商：当前距离
+            0, // 设定值：目标距离为0
+            (pidOutput) -> { // 控制输出处理
+                inPidTranslate = true;
+                
+                // 使用PID输出计算底盘速度
+                runVelocity(ChassisSpeeds.fromFieldRelativeSpeeds(new ChassisSpeeds(
+                    MathUtils.clamp(pidOutput * Math.cos(theta.getAsDouble()), 
+                        -PID_TRANSLATION_SPEED_MPS, PID_TRANSLATION_SPEED_MPS),//计算Vx速度
+                    MathUtils.clamp(pidOutput * Math.sin(theta.getAsDouble()), 
+                        -PID_TRANSLATION_SPEED_MPS, PID_TRANSLATION_SPEED_MPS),//计算Vy速度
+                    MathUtils.clamp(
+                        angleController.calculate(driveYaw.getAsDouble(), pose.getRotation().getRadians()),
+                        -PID_ROTATION_RAD_PER_SEC, PID_ROTATION_RAD_PER_SEC)),//计算角速度
+                    getRotation()));
+            },
+            this // 子系统需求
+        )
+        .until(() -> pidLineup.atSetpoint()) // 使用until判断命令退出条件
+        .andThen(() -> {
+                // 命令结束后重置所有参数
+                inPidTranslate = false;
+                pidLineup.reset();
+                angleController.reset();
+                stop();
+                System.out.println("translateToPositionWithPID command completed");
+            });
     }
 
 
     public BooleanSupplier translatePidInPosition() {
-        // System.out.println("atSetpoint " + pidLineup.atSetpoint() + " " + angleController.atSetpoint());
         return () -> pidLineup.atSetpoint() && angleController.atSetpoint();
     }
 

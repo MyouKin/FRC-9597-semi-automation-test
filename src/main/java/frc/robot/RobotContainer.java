@@ -157,11 +157,11 @@ public class RobotContainer {
         m_driverJoystick.y().onTrue(
             Commands.runOnce(() -> {
                 drivetrain.setReefTargetIsRight(false);
-                System.out.println("######################################################################Starting reef targeting command######################################################################");
+                System.out.println("Starting reef targeting command");
             })
             .andThen(Commands.defer(this::runToClosestReef, Set.<Subsystem>of(drivetrain)))
             .finallyDo((interrupted) -> {
-                System.out.println("######################################################################Reef targeting command ended. Interrupted:###################################################################### " + interrupted);
+                System.out.println("Reef targeting command ended. Interrupted: " + interrupted);
             })
         );
 
