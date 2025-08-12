@@ -15,3 +15,4 @@ The project follows the Command-based FRC Java project structure:
 - **Robot.java**: The main robot class that implements the robot lifecycle (init, periodic updates, etc.).
 - **RobotContainer.java**: Binds commands to buttons and initializes subsystems.
 - **Main.java**: Entry point for the robot program.
+- **MagicSequencing.java**: semi-automation command for aligning to reefs
