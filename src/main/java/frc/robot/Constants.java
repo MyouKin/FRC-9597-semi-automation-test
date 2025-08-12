@@ -1,6 +1,8 @@
 package frc.robot;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
@@ -115,6 +117,30 @@ public class Constants {
     public static final List<Integer> validTargetIDs = List.of(
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 ,17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
     );
+    
+    public static final Map<Integer, String> reefTagNames = new HashMap<>(){{
+            put(6, "8oC");
+            put(7, "6oC");
+            put(8, "4oC");
+            put(9, "2oC");
+            put(10, "12oC");
+            put(11, "10oC");
+            put(17, "4oC");
+            put(18, "6oC");
+            put(19, "8oC");
+            put(20, "10oC");
+            put(21, "12oC");
+            put(22, "2oC");
+        }};
+
+    public static final double SCORING_SIDE_RADIUS_ROBOT_IN = 18.25;
+
+    public static final double TAG_TO_BRANCH_OFFSET_M = 0.17;
+
+    public static final Rotation2d SCORING_SIDE_FROM_FRONT_ROT = Rotation2d.kCCW_Pi_2;
+    
     }
+
+    
 
 }

@@ -1,6 +1,8 @@
 package frc.robot.Subsystems;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +11,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 
+import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
 import org.photonvision.EstimatedRobotPose;
 import org.photonvision.PhotonCamera;
@@ -28,14 +31,17 @@ import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import com.pathplanner.lib.path.PathConstraints;
 
+import edu.wpi.first.apriltag.AprilTag;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
@@ -105,12 +111,19 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
     // PID controller for translation to target position
     private final PIDController pidLineup = new PIDController(4, 0, 0), angleController = new PIDController(4, 0, 0);
+    
     private boolean inPidTranslate = false;
     private static final double PID_TRANSLATION_SPEED_MPS = 1.5;// 最大线速度（m/s）
     private static final double PID_ROTATION_RAD_PER_SEC = Math.PI;// 最大角速度（rad/s）
     private static final double AUTON_PATH_CANCEL_RADIUS_M = 0.8; //到点容差半径，主要用在自动路径任务中作为提前结束的条件
 
-    
+    @AutoLogOutput
+    private String closestReefName = "";
+
+    // private PhotonTrackedTarget closestReefTag = ;
+
+    private boolean reefTargetIsRight = true;
+
     /** Swerve request to apply during robot-centric path following */
     private final SwerveRequest.ApplyRobotSpeeds m_pathApplyRobotSpeeds =new SwerveRequest.ApplyRobotSpeeds();
 
@@ -192,11 +205,17 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         SwerveDrivetrainConstants drivetrainConstants,
         SwerveModuleConstants<?, ?, ?>... modules
     ) {
+        
         super(drivetrainConstants, modules);
         if (Utils.isSimulation()) {
             startSimThread();
         }
         
+        //0.00635 = 0.25 inch
+        pidLineup.setTolerance(0.1);
+        angleController.setTolerance(Units.degreesToRadians(1));
+        angleController.enableContinuousInput(0, 2 * Math.PI);
+
         // initialize camera system
         cameraEstimators.put(
             new PhotonCamera("Camera_left"),
@@ -408,7 +427,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 /********************************************************************** vision end *********************************************************** */
 
 
-
+    @SuppressWarnings("removal")
     public Command translateToPositionWithPID(Pose2d pose) {
         DoubleSupplier theta = () -> new Pose2d(pose.getTranslation(), new Rotation2d())//计算目标方向角
                 .relativeTo(new Pose2d(getPose().getTranslation(), new Rotation2d()))
@@ -446,6 +465,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
 
     public BooleanSupplier translatePidInPosition() {
+        // System.out.println("atSetpoint " + pidLineup.atSetpoint() + " " + angleController.atSetpoint());
         return () -> pidLineup.atSetpoint() && angleController.atSetpoint();
     }
 
@@ -453,6 +473,71 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         return AutoBuilder.pathfindToPose(pose, new PathConstraints(2, 2, Math.PI, 2 * Math.PI));
     }
 
+    public Pose2d closestReefPose() {
+    List<PhotonTrackedTarget> allValidTargets = new ArrayList<>();
+    
+    // 遍历所有相机，获取并合并所有有效的AprilTag目标
+    cameraEstimators.forEach((camera, estimator) -> {
+        List<PhotonPipelineResult> cameraResults = camera.getAllUnreadResults();
+        if (cameraResults.isEmpty()) return;
+        
+        PhotonPipelineResult latestResult = cameraResults.get(cameraResults.size() - 1);
+        if (!latestResult.hasTargets()) return;
+        
+        // 筛选有效的reef tag并添加到合并列表中
+        latestResult.getTargets().stream()
+            .filter(target -> target.getFiducialId() != -1)
+            .filter(target -> Constants.Vision.reefTagNames.containsKey(target.getFiducialId()))
+            .forEach(allValidTargets::add);
+    });
+    
+    // 从所有相机的结果中找到最近的有效AprilTag
+    PhotonTrackedTarget closestTag = allValidTargets.stream()
+        .min(Comparator.comparingDouble(target -> {
+            Optional<Pose3d> tagPose = aprilTagFieldLayout.getTagPose(target.getFiducialId());
+            return tagPose.map(pose -> pose.toPose2d().getTranslation().getDistance(getPose().getTranslation()))
+                        .orElse(Double.MAX_VALUE);
+        }))
+        .orElse(null);
+    
+    // 如果没有找到有效tag，使用默认的第一个tag
+    int targetTagId;
+    if (closestTag == null) {
+        targetTagId = 17; // 使用ID为6的tag作为默认
+        closestReefName = Constants.Vision.reefTagNames.get(17);
+        // closestReefTag = null; // 没有实际检测到的tag
+    } else {
+        targetTagId = closestTag.getFiducialId();
+        closestReefName = Constants.Vision.reefTagNames.get(targetTagId);
+        // closestReefTag = closestTag;
+    }
+    
+    // 获取tag的场地位置
+    Optional<Pose3d> tagPose = aprilTagFieldLayout.getTagPose(targetTagId);
+    if (!tagPose.isPresent()) {
+        // 如果找不到tag位置，返回当前机器人位置作为fallback
+        System.err.println("Warning: Could not find pose for tag ID " + targetTagId);
+        return getPose();
+    }
+    
+    Pose2d tagPose2d = tagPose.get().toPose2d();
+    
+    // 计算得分位置
+    Pose2d closestPose = tagPose2d
+            .transformBy(new Transform2d(
+                Units.inchesToMeters(Constants.Vision.SCORING_SIDE_RADIUS_ROBOT_IN),
+                ((reefTargetIsRight ? Constants.Vision.TAG_TO_BRANCH_OFFSET_M : -Constants.Vision.TAG_TO_BRANCH_OFFSET_M)),
+                Rotation2d.kZero));
+    
+
+
+    return new Pose2d(closestPose.getTranslation(),
+            closestPose.getRotation().plus(Constants.Vision.SCORING_SIDE_FROM_FRONT_ROT));
+    }
+
+    public void setReefTargetIsRight(boolean reefTargetIsRight) {
+        this.reefTargetIsRight = reefTargetIsRight;
+    }
 
     /** 将给定的机器人相对速度下发到底盘（使用已有的 m_pathApplyRobotSpeeds） */
     private void runVelocity(ChassisSpeeds robotRelativeSpeeds) {

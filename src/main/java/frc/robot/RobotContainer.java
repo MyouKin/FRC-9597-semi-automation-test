@@ -19,6 +19,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
+import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Subsystems.CANdleSystem;
 import frc.robot.Subsystems.Claw;
@@ -147,8 +148,22 @@ public class RobotContainer {
         m_driverJoystick.b().onTrue(drivetrain.ChangeVisionDataStatus().
                                 andThen((new InstantCommand(() -> candle.Changecolor(drivetrain.Get_Auto_State()), candle))));
 
-        //m_driverJoystick.y().whileTrue(new AutoAlignToAprilTagCommand(drivetrain));//auto align to the tag
+        // m_driverJoystick.y().whileTrue(new AutoAlignToAprilTagCommand(drivetrain));//auto align to the tag
 
+        // m_driverJoystick.y().onTrue(
+        //         Commands.runOnce(() -> drivetrain.setReefTargetIsRight(false)).andThen(Commands.defer(this::runToClosestReef,
+        //                 Set.<Subsystem>of(drivetrain))));
+
+        m_driverJoystick.y().onTrue(
+            Commands.runOnce(() -> {
+                drivetrain.setReefTargetIsRight(false);
+                System.out.println("######################################################################Starting reef targeting command######################################################################");
+            })
+            .andThen(Commands.defer(this::runToClosestReef, Set.<Subsystem>of(drivetrain)))
+            .finallyDo((interrupted) -> {
+                System.out.println("######################################################################Reef targeting command ended. Interrupted:###################################################################### " + interrupted);
+            })
+        );
 
         //************************************************************ (operator) ********************************************************
         //back to start ,if using vision data->orange,or->off
@@ -220,10 +235,10 @@ public class RobotContainer {
         // }
     }
 
-    //find the colset reef pose and run to it
-    // private Command runToClosestReef() {
-    //     return  MagicSequencing.magicScoreNoScoreReefOnlyPID(drive, drive.closestReefPose());
-    // }
+    // find the colset reef pose and run to it
+    private Command runToClosestReef() {
+        return  MagicSequencing.magicScoreNoScoreReef(drivetrain, () -> drivetrain.closestReefPose());
+    }
 
     public Command getAutonomousCommand() {
 
