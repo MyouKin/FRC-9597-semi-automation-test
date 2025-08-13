@@ -100,44 +100,43 @@ public class Constants {
 
     }
 
-
     public static class Vision {
-    // The layout of the AprilTags on the field
-    public static final AprilTagFieldLayout aprilTagFieldLayout = AprilTagFieldLayout
-            .loadField(AprilTagFields.kDefaultField);
-    public static Pose2d m_initialPose = new Pose2d(7.68, 3.7, Rotation2d.fromDegrees(180)); //blue start middle
-    // public Pose2d m_initialPose = new Pose2d(7.68, 3.7, Rotation2d.fromDegrees(180)); //blue start left
-    // public Pose2d m_initialPose = new Pose2d(7.68, 3.7, Rotation2d.fromDegrees(180)); //blue start right
+        
+        // The layout of the AprilTags on the field
+        public static final AprilTagFieldLayout aprilTagFieldLayout = AprilTagFieldLayout
+                .loadField(AprilTagFields.kDefaultField);
+        public static Pose2d m_initialPose = new Pose2d(7.68, 3.7, Rotation2d.fromDegrees(180)); //blue start middle
+        // public Pose2d m_initialPose = new Pose2d(7.68, 3.7, Rotation2d.fromDegrees(180)); //blue start left
+        // public Pose2d m_initialPose = new Pose2d(7.68, 3.7, Rotation2d.fromDegrees(180)); //blue start right
 
-    //public static Pose2d m_initialPose = new Pose2d(7.68, 3.7, Rotation2d.fromDegrees(180)); //red start middle
-    // public Pose2d m_initialPose = new Pose2d(7.68, 3.7, Rotation2d.fromDegrees(180)); //red start left
-    // public Pose2d m_initialPose = new Pose2d(7.68, 3.7, Rotation2d.fromDegrees(180)); //red start right
+        //public static Pose2d m_initialPose = new Pose2d(7.68, 3.7, Rotation2d.fromDegrees(180)); //red start middle
+        // public Pose2d m_initialPose = new Pose2d(7.68, 3.7, Rotation2d.fromDegrees(180)); //red start left
+        // public Pose2d m_initialPose = new Pose2d(7.68, 3.7, Rotation2d.fromDegrees(180)); //red start right
 
-        // 有效的AprilTag ID列表 (根据比赛场地设置)
-    public static final List<Integer> validTargetIDs = List.of(
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 ,17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
-    );
-    
-    public static final Map<Integer, String> reefTagNames = new HashMap<>(){{
-            put(6, "8oC");
-            put(7, "6oC");
-            put(8, "4oC");
-            put(9, "2oC");
-            put(10, "12oC");
-            put(11, "10oC");
-            put(17, "4oC");
-            put(18, "6oC");
-            put(19, "8oC");
-            put(20, "10oC");
-            put(21, "12oC");
-            put(22, "2oC");
-        }};
+        // The AprilTag IDs for scoring points
+        public static final Map<Integer, String> reefTagNames = new HashMap<>(){{
+                put(6, "8oC");
+                put(7, "6oC");
+                put(8, "4oC");
+                put(9, "2oC");
+                put(10, "12oC");
+                put(11, "10oC");
+                put(17, "4oC");
+                put(18, "6oC");
+                put(19, "8oC");
+                put(20, "10oC");
+                put(21, "12oC");
+                put(22, "2oC");
+            }};
 
-    public static final double SCORING_SIDE_RADIUS_ROBOT_IN = 18.25;
+        //到点容差半径
+        public static final double SCORING_SIDE_RADIUS_ROBOT_IN = 18.25;
 
-    public static final double TAG_TO_BRANCH_OFFSET_M = 0.17;
-
-    public static final Rotation2d SCORING_SIDE_FROM_FRONT_ROT = Rotation2d.kCCW_Pi_2;
+        //两侧挂珊瑚位置到tag中心偏移
+        public static final double TAG_TO_BRANCH_OFFSET_M = 0.17;
+        
+        //对正时的角度
+        public static final Rotation2d SCORING_SIDE_FROM_FRONT_ROT = Rotation2d.kCCW_Pi_2;
     
     }
 
