@@ -533,11 +533,14 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         
         // 遍历所有相机，获取并合并所有有效的AprilTag目标
         cameraEstimators.forEach((camera, estimator) -> {
-            List<PhotonPipelineResult> cameraResults = camera.getAllUnreadResults();
-            if (cameraResults.isEmpty()) return;
+            // 使用getLatestResult()替代getAllUnreadResults()
+            PhotonPipelineResult latestResult = camera.getLatestResult();
             
-            PhotonPipelineResult latestResult = cameraResults.get(cameraResults.size() - 1);
-            if (!latestResult.hasTargets()) return;
+            // 检查结果是否有效且包含目标
+            if (latestResult == null || !latestResult.hasTargets()) {
+                System.out.println("No valid targets for camera: " + camera.getName());
+                return;
+            }
             
             // 筛选有效的reef tag并添加到合并列表中
             latestResult.getTargets().stream()
@@ -555,17 +558,26 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             }))
             .orElse(null);
         
+        // // 如果没有找到有效tag，使用默认的第一个tag
+        // int targetTagId;
+        // if (closestTag == null) {
+        //     targetTagId = 17; // 使用ID为6的tag作为默认
+        //     closestReefName = Constants.Vision.reefTagNames.get(17);
+        //     // closestReefTag = null; // 没有实际检测到的tag
+        // } else {
+        //     targetTagId = closestTag.getFiducialId();
+        //     closestReefName = Constants.Vision.reefTagNames.get(targetTagId);
+        //     // closestReefTag = closestTag;
+        // }
+
         // 如果没有找到有效tag，使用默认的第一个tag
-        int targetTagId;
         if (closestTag == null) {
-            targetTagId = 17; // 使用ID为6的tag作为默认
-            closestReefName = Constants.Vision.reefTagNames.get(17);
-            // closestReefTag = null; // 没有实际检测到的tag
-        } else {
-            targetTagId = closestTag.getFiducialId();
-            closestReefName = Constants.Vision.reefTagNames.get(targetTagId);
-            // closestReefTag = closestTag;
+            System.out.println("No valid reef tags found, staying at current position");
+            return getPose();
         }
+
+        int targetTagId = closestTag.getFiducialId();
+        closestReefName = Constants.Vision.reefTagNames.get(targetTagId);
         
         // 获取tag的场地位置
         Optional<Pose3d> tagPose = aprilTagFieldLayout.getTagPose(targetTagId);
