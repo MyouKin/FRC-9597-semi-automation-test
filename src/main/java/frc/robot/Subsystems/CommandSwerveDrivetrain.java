@@ -31,7 +31,6 @@ import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import com.pathplanner.lib.path.PathConstraints;
 
-import edu.wpi.first.apriltag.AprilTag;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.Matrix;
@@ -61,7 +60,6 @@ import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.PIDCommand;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
@@ -91,12 +89,12 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     private final SwerveRequest.SysIdSwerveSteerGains m_steerCharacterization = new SwerveRequest.SysIdSwerveSteerGains();
     private final SwerveRequest.SysIdSwerveRotation m_rotationCharacterization = new SwerveRequest.SysIdSwerveRotation();
 
-    //vision
+    /* vision */
     public  boolean kUseVision = true;
     public final Map<PhotonCamera, PhotonPoseEstimator> cameraEstimators = new HashMap<>();
     private final AprilTagFieldLayout aprilTagFieldLayout = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
 
-    //Auto
+    /* Auto */
     // PathPlanner config constants
     private static final Mass ROBOT_MASS = Kilogram.of(74);
     private static final MomentOfInertia ROBOT_MOI =KilogramSquareMeters.of(6.8);
@@ -112,7 +110,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
     // PID controller for translation to target position
     private final PIDController pidLineup = new PIDController(4, 0, 0), angleController = new PIDController(4, 0, 0);
-    
     private boolean inPidTranslate = false;
     private static final double PID_TRANSLATION_SPEED_MPS = 1.5;// 最大线速度（m/s）
     private static final double PID_ROTATION_RAD_PER_SEC = Math.PI;// 最大角速度（rad/s）
@@ -120,15 +117,12 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
     @AutoLogOutput
     private String closestReefName = "";
-
+    private boolean reefTargetIsRight = true;
     // private PhotonTrackedTarget closestReefTag = ;
 
-    private boolean reefTargetIsRight = true;
-
-    /** Swerve request to apply during robot-centric path following */
+    /* Swerve request to apply during robot-centric path following */
     private final SwerveRequest.ApplyRobotSpeeds m_pathApplyRobotSpeeds =new SwerveRequest.ApplyRobotSpeeds();
 
-    
     /* SysId routine for characterizing translation. This is used to find PID gains for the drive motors. */
     private final SysIdRoutine m_sysIdRoutineTranslation = new SysIdRoutine(
         new SysIdRoutine.Config(
@@ -187,7 +181,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             this
         )
     );
-
 
     /* The SysId routine to test */
     private SysIdRoutine m_sysIdRoutineToApply = m_sysIdRoutineTranslation;
@@ -291,10 +284,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         );
         AutoBuilder.resetOdom(Constants.Vision.m_initialPose);
 
-
-
     }
-
 
     /**
      * Returns a command that applies the specified control request to this swerve drivetrain.
@@ -306,16 +296,20 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         return run(() -> this.setControl(requestSupplier.get()));
     }
 
-    
+    /*
+     * Periodically update the operator perspective:
+     * 1. If it has never been applied before (e.g., after a restart), apply immediately
+     *    regardless of Driver Station state to ensure correct driving direction mid-match.
+     * 2. If already applied, only update when the Driver Station is disabled
+     *    to avoid sudden changes in driving direction during operation,
+     *    ensuring consistent control behavior during testing.
+     * 
+     * Vision processing:
+     * Execute vision data processing every cycle to keep perception information up to date.
+     */
     @Override
     public void periodic() {
-        /*
-         * Periodically try to apply the operator perspective.
-         * If we haven't applied the operator perspective before, then we should apply it regardless of DS state.
-         * This allows us to correct the perspective in case the robot code restarts mid-match.
-         * Otherwise, only check and apply the operator perspective if the DS is disabled.
-         * This ensures driving behavior doesn't change until an explicit disable event occurs during testing.
-         */
+
         if (!m_hasAppliedOperatorPerspective || DriverStation.isDisabled()) {
             DriverStation.getAlliance().ifPresent(allianceColor -> {
                 setOperatorPerspectiveForward(
@@ -326,12 +320,19 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
                 m_hasAppliedOperatorPerspective = true;
             });
         }
-
-        //vision processing 
+        //vision data processing 
         processVisionData();
     }
 
-/***************************************************************** process  vision data   ***********************************************************/
+    /**
+     * Processes vision data from all registered cameras and updates the robot pose estimation.
+     * This method:
+     *   Publishes drivetrain odometry pose to the SmartDashboard.</li>
+     *   Retrieves and processes the latest vision results from each camera.</li>
+     *   Updates the pose estimator with vision measurements if vision is enabled.</li>
+     *   Publishes vision pose, detected target IDs, and logs output for debugging.</li>
+     * This should be called periodically (e.g., in {@code periodic()}) to keep vision-based localization up to date.
+     */
     private void processVisionData() {
         //System.out.println("vision status "+kUseVision);
         SwerveDriveState driveState = getState();
@@ -394,7 +395,16 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     }
 
 
-    // New standard deviation calculation method
+    /**
+     * Calculates adaptive standard deviations for vision pose estimation
+     * based on the number of AprilTags detected, their average distance,
+     * and the current drivetrain speed.
+     *
+     * @param tagCount   Number of detected AprilTags.
+     * @param avgDistance Average distance (in meters) from the camera to detected tags.
+     * @param speeds     Current chassis speeds of the drivetrain.
+     * @return A {@link Matrix} containing the standard deviations for X, Y, and rotation (θ).
+     */
     private Matrix<N3, N1> calculateAdaptiveStdDevs(int tagCount, double avgDistance, ChassisSpeeds speeds) {
         double baseXY, baseTheta;
         
@@ -418,7 +428,12 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         );
     }
 
-    // calculateAverageDistance
+    /**
+     * Calculates the average Euclidean distance from the camera to all detected AprilTags.
+     *
+     * @param targets List of detected {@link PhotonTrackedTarget} objects.
+     * @return The average distance in meters, or 0.0 if no targets are present.
+     */
     private double calculateAverageDistance(List<PhotonTrackedTarget> targets) {
         return targets.stream()
             .mapToDouble(t -> t.getBestCameraToTarget().getTranslation().getNorm())
@@ -426,7 +441,18 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             .orElse(0.0);
     }
 
-/********************************************************************** vision end *********************************************************** */
+    /**
+     * Translates the robot to a target position and orientation using PID control.
+     * <p>
+     * This command uses a linear PID controller for translation and a separate
+     * controller for rotation to move the robot from its current pose to the
+     * specified {@code pose}. It calculates the required field-relative chassis
+     * speeds based on the distance and angle to the target, and terminates when
+     * the position error is within the PID tolerance.
+     *
+     * @param pose The target pose (position and orientation) in field coordinates.
+     * @return A {@link Command} that drives the robot until it reaches the target pose.
+     */
     @SuppressWarnings("removal")
     public Command translateToPositionWithPID(Pose2d pose) {
         DoubleSupplier theta = () -> new Pose2d(pose.getTranslation(), new Rotation2d())//计算目标方向角
@@ -470,15 +496,39 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             });
     }
 
-
+    /**
+     * Returns a {@link BooleanSupplier} indicating whether both the translation and rotation
+     * PID controllers are within their respective setpoint tolerances.
+     *
+     * @return A boolean supplier that is {@code true} when both PID controllers have reached
+     *         their setpoints.
+     */
     public BooleanSupplier translatePidInPosition() {
         return () -> pidLineup.atSetpoint() && angleController.atSetpoint();
     }
 
+    /**
+     * Creates a command that uses pathfinding to move the robot to the given target pose.
+     * <p>
+     * This command uses predefined motion constraints to ensure the robot moves within
+     * safe velocity and acceleration limits.
+     *
+     * @param pose The desired target pose (position and orientation) on the field.
+     * @return A {@link Command} that will pathfind to the target pose.
+     */
     public Command pathfindToPose(Pose2d pose) {
         return AutoBuilder.pathfindToPose(pose, new PathConstraints(2, 2, Math.PI, 2 * Math.PI));
     }
 
+    /**
+     * Finds the closest scoring position (reef pose) based on AprilTag vision data.
+     * <p>
+     * This method collects all valid AprilTag targets from all cameras, identifies the
+     * nearest reef tag, and calculates the robot's optimal scoring position relative to it.
+     * If no valid tags are detected, it defaults to a predetermined tag ID.
+     *
+     * @return The closest reef scoring {@link Pose2d} relative to the field.
+     */
     public Pose2d closestReefPose() {
     List<PhotonTrackedTarget> allValidTargets = new ArrayList<>();
     
@@ -537,26 +587,46 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     
 
 
-    return new Pose2d(closestPose.getTranslation(),
-            closestPose.getRotation().plus(Constants.Vision.SCORING_SIDE_FROM_FRONT_ROT));
+        return new Pose2d(closestPose.getTranslation(),
+                closestPose.getRotation().plus(Constants.Vision.SCORING_SIDE_FROM_FRONT_ROT));
     }
 
+    /**
+     * Sets whether the reef target is located on the right side.
+     *
+     * @param reefTargetIsRight true if the target is on the right, false if on the left
+     */
     public void setReefTargetIsRight(boolean reefTargetIsRight) {
         this.reefTargetIsRight = reefTargetIsRight;
     }
 
-    /** 将给定的机器人相对速度下发到底盘（使用已有的 m_pathApplyRobotSpeeds） */
+    /**
+     * Sends the given robot-relative chassis speeds to the drivetrain.
+     *
+     * @param robotRelativeSpeeds The desired chassis speeds in the robot's reference frame
+     */
     private void runVelocity(ChassisSpeeds robotRelativeSpeeds) {
         // m_pathApplyRobotSpeeds 是你类里已存在的 ApplyRobotSpeeds 实例
         this.setControl(m_pathApplyRobotSpeeds.withSpeeds(robotRelativeSpeeds));
     }
 
-    /** 停止机器人（置速度为 0） */
+    /**
+     * Stops the drivetrain by setting all chassis velocities to zero.
+     */
     private void stop() {
         runVelocity(new ChassisSpeeds(0.0, 0.0, 0.0));
     }
 
-
+    /**
+     * Initializes and starts a high-frequency simulation thread for drivetrain physics updates.
+     * <p>
+     * This method:
+     * <ul>
+     *   <li>Stores the current simulation time</li>
+     *   <li>Creates a {@link Notifier} that repeatedly calls {@link #updateSimState} at a fixed interval</li>
+     *   <li>Runs the simulation loop at a faster rate so PID gains behave more realistically</li>
+     * </ul>
+     */
     private void startSimThread() {
         m_lastSimTime = Utils.getCurrentTimeSeconds();
 
@@ -606,27 +676,52 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         super.addVisionMeasurement(visionRobotPoseMeters, Utils.fpgaToCurrentTime(timestampSeconds), visionMeasurementStdDevs);
     }
 
-    //get the pose of the robot
+    /**
+     * Gets the current pose of the robot.
+     *
+     * @return the current robot pose as a {@link Pose2d} object.
+     */
     public Pose2d getPose() {
         return this.getState().Pose;
     }
 
-    /** Returns the current odometry rotation. */
+    /**
+     * Returns the current rotation of the robot from odometry.
+     *
+     * @return the current robot rotation as a {@link Rotation2d}.
+     */
     public Rotation2d getRotation() {
         return getPose().getRotation();
     }
 
+    /**
+     * Creates a command to reset the robot's pose.
+     *
+     * @param pose the new pose to set for the robot.
+     * @return a {@link Command} that resets the pose when executed.
+     */
     public Command resetpose(Pose2d pose){
         return runOnce(
             ()->resetPose(pose));
     }
 
-    //get the robot relative speeds
+    /**
+     * Gets the current robot-relative chassis speeds.
+     *
+     * @return the current speeds in the robot's frame of reference
+     *         as a {@link ChassisSpeeds} object.
+     */
     public ChassisSpeeds getRobotRelativeSpeeds() {
         return this.getKinematics().toChassisSpeeds(this.getState().ModuleStates);
     }
 
-    //get the robot state auto or operated
+    /**
+     * Determines the starting state of the elevator system
+     * based on whether vision is being used.
+     *
+     * @return {@link Constants.Elevator.State#START_AUTO} if vision is enabled,
+     *         otherwise {@link Constants.Elevator.State#START_OPERATED}.
+     */
     public Constants.Elevator.State Get_Auto_State(){
         if(kUseVision){
             return Constants.Elevator.State.START_AUTO;
@@ -658,6 +753,15 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         return m_sysIdRoutineToApply.dynamic(direction);
     }
 
+    /**
+     * Toggles the usage of vision data in the system.
+     * <p>
+     * When executed, this command inverts the current {@code kUseVision} status:
+     * if vision data is currently enabled, it will be disabled, and vice versa.
+     * This allows switching between vision-assisted and non-vision modes at runtime.
+     *
+     * @return a {@link Command} that performs the vision status toggle once when run
+     */
     public Command ChangeVisionDataStatus(){
         return  runOnce(()->{
             //System.out.println("vision status"+kUseVision);
@@ -665,6 +769,5 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         });
     }
 
-        
 }
 
