@@ -245,11 +245,12 @@ public class RobotContainer {
 
     // find the colset reef pose and run to it
     private Command runToClosestReef() {
-        return  MagicSequencing.magicScoreNoScoreReef(drivetrain, () -> drivetrain.closestReefPose());
+        return  MagicSequencing.magicScoreNoScoreReef(drivetrain, () -> drivetrain.closestReefPose(vision.cameraEstimators));
     }
 
 
     public void addMeasurements() {
+
         SwerveDriveState driveState = drivetrain.getState();
         List<VisionMeasurement> measurements = vision.processVisionData(driveState);
 

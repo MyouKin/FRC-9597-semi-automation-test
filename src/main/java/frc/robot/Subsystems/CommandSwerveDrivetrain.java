@@ -2,7 +2,6 @@ package frc.robot.Subsystems;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -82,7 +81,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
     /* vision */
     public  boolean kUseVision = true;
-    public final Map<PhotonCamera, PhotonPoseEstimator> cameraEstimators = new HashMap<>();
     private final AprilTagFieldLayout aprilTagFieldLayout = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
 
     /* Auto */
@@ -519,10 +517,10 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
      *
      * @return The closest reef scoring {@link Pose2d} relative to the field.
      */
-    public Pose2d closestReefPose() {
+    public Pose2d closestReefPose(Map<PhotonCamera, PhotonPoseEstimator> cameraEstimators) {
         List<PhotonTrackedTarget> allValidTargets = new ArrayList<>();
         
-        // 遍历所有相机，获取并合并所有有效的AprilTag目标
+        // 遍历相机，获取并合并所有有效的AprilTag目标
         cameraEstimators.forEach((camera, estimator) -> {
             List<PhotonPipelineResult> cameraResults = camera.getAllUnreadResults();
             if (cameraResults.isEmpty()) return;

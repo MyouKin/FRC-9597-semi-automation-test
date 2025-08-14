@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
 import org.photonvision.EstimatedRobotPose;
 import org.photonvision.PhotonCamera;
@@ -33,8 +34,11 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class Vision extends SubsystemBase {
 
+    @AutoLogOutput
+    private String closestReefName = "";
+    private boolean reefTargetIsRight = true;
+    // private PhotonTrackedTarget closestReefTag = ;
     /* vision */
-    public  boolean kUseVision = true;
     public final Map<PhotonCamera, PhotonPoseEstimator> cameraEstimators = new HashMap<>();
     private final AprilTagFieldLayout aprilTagFieldLayout = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
 
@@ -200,6 +204,7 @@ public class Vision extends SubsystemBase {
             .average()
             .orElse(0.0);
     }
+
 
 }
 
