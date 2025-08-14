@@ -136,7 +136,7 @@ public class Constants {
         public static final double TAG_TO_BRANCH_OFFSET_M = 0.17;
         
         //对正时的角度
-        public static final Rotation2d SCORING_SIDE_FROM_FRONT_ROT = Rotation2d.kCCW_Pi_2;
+        public static final Rotation2d SCORING_SIDE_FROM_FRONT_ROT = new Rotation2d(Math.PI);
     
     }
 
