@@ -205,9 +205,8 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             startSimThread();
         }
         
-        //0.00635 = 0.25 inch
-        pidLineup.setTolerance(0.05);
-        angleController.setTolerance(Units.degreesToRadians(5));
+        pidLineup.setTolerance(0.03);//m
+        angleController.setTolerance(Units.degreesToRadians(1));//°
 
         angleController.enableContinuousInput(0, 2 * Math.PI);
 
@@ -530,61 +529,61 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
      * @return The closest reef scoring {@link Pose2d} relative to the field.
      */
     public Pose2d closestReefPose() {
-    List<PhotonTrackedTarget> allValidTargets = new ArrayList<>();
-    
-    // 遍历所有相机，获取并合并所有有效的AprilTag目标
-    cameraEstimators.forEach((camera, estimator) -> {
-        List<PhotonPipelineResult> cameraResults = camera.getAllUnreadResults();
-        if (cameraResults.isEmpty()) return;
+        List<PhotonTrackedTarget> allValidTargets = new ArrayList<>();
         
-        PhotonPipelineResult latestResult = cameraResults.get(cameraResults.size() - 1);
-        if (!latestResult.hasTargets()) return;
+        // 遍历所有相机，获取并合并所有有效的AprilTag目标
+        cameraEstimators.forEach((camera, estimator) -> {
+            List<PhotonPipelineResult> cameraResults = camera.getAllUnreadResults();
+            if (cameraResults.isEmpty()) return;
+            
+            PhotonPipelineResult latestResult = cameraResults.get(cameraResults.size() - 1);
+            if (!latestResult.hasTargets()) return;
+            
+            // 筛选有效的reef tag并添加到合并列表中
+            latestResult.getTargets().stream()
+                .filter(target -> target.getFiducialId() != -1)
+                .filter(target -> Constants.Vision.reefTagNames.containsKey(target.getFiducialId()))
+                .forEach(allValidTargets::add);
+        });
         
-        // 筛选有效的reef tag并添加到合并列表中
-        latestResult.getTargets().stream()
-            .filter(target -> target.getFiducialId() != -1)
-            .filter(target -> Constants.Vision.reefTagNames.containsKey(target.getFiducialId()))
-            .forEach(allValidTargets::add);
-    });
-    
-    // 从所有相机的结果中找到最近的有效AprilTag
-    PhotonTrackedTarget closestTag = allValidTargets.stream()
-        .min(Comparator.comparingDouble(target -> {
-            Optional<Pose3d> tagPose = aprilTagFieldLayout.getTagPose(target.getFiducialId());
-            return tagPose.map(pose -> pose.toPose2d().getTranslation().getDistance(getPose().getTranslation()))
-                        .orElse(Double.MAX_VALUE);
-        }))
-        .orElse(null);
-    
-    // 如果没有找到有效tag，使用默认的第一个tag
-    int targetTagId;
-    if (closestTag == null) {
-        targetTagId = 17; // 使用ID为6的tag作为默认
-        closestReefName = Constants.Vision.reefTagNames.get(17);
-        // closestReefTag = null; // 没有实际检测到的tag
-    } else {
-        targetTagId = closestTag.getFiducialId();
-        closestReefName = Constants.Vision.reefTagNames.get(targetTagId);
-        // closestReefTag = closestTag;
-    }
-    
-    // 获取tag的场地位置
-    Optional<Pose3d> tagPose = aprilTagFieldLayout.getTagPose(targetTagId);
-    if (!tagPose.isPresent()) {
-        // 如果找不到tag位置，返回当前机器人位置作为fallback
-        System.err.println("Warning: Could not find pose for tag ID " + targetTagId);
-        return getPose();
-    }
-    
-    Pose2d tagPose2d = tagPose.get().toPose2d();
-    
-    // 计算得分位置
-    Pose2d closestPose = tagPose2d
-            .transformBy(new Transform2d(
-                Units.inchesToMeters(Constants.Vision.SCORING_SIDE_RADIUS_ROBOT_IN),
-                ((reefTargetIsRight ? Constants.Vision.TAG_TO_BRANCH_OFFSET_M : -Constants.Vision.TAG_TO_BRANCH_OFFSET_M)),
-                Rotation2d.kZero));
-    
+        // 从所有相机的结果中找到最近的有效AprilTag
+        PhotonTrackedTarget closestTag = allValidTargets.stream()
+            .min(Comparator.comparingDouble(target -> {
+                Optional<Pose3d> tagPose = aprilTagFieldLayout.getTagPose(target.getFiducialId());
+                return tagPose.map(pose -> pose.toPose2d().getTranslation().getDistance(getPose().getTranslation()))
+                            .orElse(Double.MAX_VALUE);
+            }))
+            .orElse(null);
+        
+        // 如果没有找到有效tag，使用默认的第一个tag
+        int targetTagId;
+        if (closestTag == null) {
+            targetTagId = 17; // 使用ID为6的tag作为默认
+            closestReefName = Constants.Vision.reefTagNames.get(17);
+            // closestReefTag = null; // 没有实际检测到的tag
+        } else {
+            targetTagId = closestTag.getFiducialId();
+            closestReefName = Constants.Vision.reefTagNames.get(targetTagId);
+            // closestReefTag = closestTag;
+        }
+        
+        // 获取tag的场地位置
+        Optional<Pose3d> tagPose = aprilTagFieldLayout.getTagPose(targetTagId);
+        if (!tagPose.isPresent()) {
+            // 如果找不到tag位置，返回当前机器人位置作为fallback
+            System.err.println("Warning: Could not find pose for tag ID " + targetTagId);
+            return getPose();
+        }
+        
+        Pose2d tagPose2d = tagPose.get().toPose2d();
+        
+        // 计算得分位置
+        Pose2d closestPose = tagPose2d
+                .transformBy(new Transform2d(
+                    Units.inchesToMeters(Constants.Vision.SCORING_SIDE_RADIUS_ROBOT_IN),
+                    ((reefTargetIsRight ? Constants.Vision.TAG_TO_BRANCH_OFFSET_M : -Constants.Vision.TAG_TO_BRANCH_OFFSET_M)),
+                    Rotation2d.kZero));
+        
 
 
         return new Pose2d(closestPose.getTranslation(),

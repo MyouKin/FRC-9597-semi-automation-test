@@ -132,9 +132,11 @@ public class Constants {
         //到点容差半径
         public static final double SCORING_SIDE_RADIUS_ROBOT_IN = 18.25;
 
-    public static final double TAG_TO_BRANCH_OFFSET_M = 0.17;
-
-    public static final Rotation2d SCORING_SIDE_FROM_FRONT_ROT = Rotation2d.kCCW_Pi_2;
+        //两侧挂珊瑚位置到tag中心偏移
+        public static final double TAG_TO_BRANCH_OFFSET_M = 0.17;
+        
+        //对正时的角度
+        public static final Rotation2d SCORING_SIDE_FROM_FRONT_ROT = Rotation2d.kCCW_Pi_2;
     
     }
 
