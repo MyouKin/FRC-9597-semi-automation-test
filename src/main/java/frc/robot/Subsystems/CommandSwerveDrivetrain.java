@@ -199,37 +199,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
         angleController.enableContinuousInput(0, 2 * Math.PI);
 
-        // // initialize camera system
-        // cameraEstimators.put(
-        //     new PhotonCamera("Camera_left"),
-        //     new PhotonPoseEstimator(
-        //         aprilTagFieldLayout,
-        //         PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
-        //         new Transform3d(
-        //             new Translation3d(0.31, 0.31, 0.5),//z to elevator
-        //             new Rotation3d(     
-        //             0,
-        //             Units.degreesToRadians(0),//pitch
-        //             Units.degreesToRadians(0))//yaw
-        //         )
-        //     )
-        // );
-        // cameraEstimators.put(
-        //     new PhotonCamera("Camera_right"), 
-        //     new PhotonPoseEstimator(
-        //         aprilTagFieldLayout,
-        //         PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
-        //         new Transform3d(
-        //             new Translation3d(0.31, -0.31, 0.5),
-        //             new Rotation3d(     
-        //                 0,
-        //                 Units.degreesToRadians(0),//pitch
-        //                 Units.degreesToRadians(0))//yaw
-        //         )
-        //     )
-        // );
-        // System.out.println("finish camera initialization");
-
         // Robot config
         RobotConfig robotConfig = null; // Initialize with null in case of exception
         try {
@@ -308,126 +277,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
                 m_hasAppliedOperatorPerspective = true;
             });
         }
-        //vision data processing 
-        //processVisionData();
     }
-
-    /**
-     * Processes vision data from all registered cameras and updates the robot pose estimation.
-     * This method:
-     *   Publishes drivetrain odometry pose to the SmartDashboard.</li>
-     *   Retrieves and processes the latest vision results from each camera.</li>
-     *   Updates the pose estimator with vision measurements if vision is enabled.</li>
-     *   Publishes vision pose, detected target IDs, and logs output for debugging.</li>
-     * This should be called periodically (e.g., in {@code periodic()}) to keep vision-based localization up to date.
-     */
-    // private void processVisionData() {
-    //     //System.out.println("vision status "+kUseVision);
-    //     SwerveDriveState driveState = getState();
-    //     Pose2d odometryPose = driveState.Pose;
-
-    //     // report the pose of drivetrain
-    //     SmartDashboard.putNumberArray("Chassis/Pose", 
-    //         new double[] {
-    //             odometryPose.getX(),
-    //             odometryPose.getY(),
-    //             odometryPose.getRotation().getDegrees()
-    //         });
-
-    //     cameraEstimators.forEach((camera, estimator) -> {
-    //         List<PhotonPipelineResult> cameraResults = camera.getAllUnreadResults();
-    //         if (cameraResults.isEmpty()) return;
-
-    //         PhotonPipelineResult latestResult = cameraResults.get(cameraResults.size() - 1);
-    //         if (!latestResult.hasTargets()) return;
-    //         //System.out.println("size"+latestResult.targets.size());
-
-    //         estimator.setReferencePose(odometryPose);
-    //         Optional<EstimatedRobotPose> estimatedPose = estimator.update(latestResult);
-            
-    //         estimatedPose.ifPresent(pose -> {
-    //             Matrix<N3, N1> stdDevs = calculateAdaptiveStdDevs(
-    //                 latestResult.targets.size(),
-    //                 calculateAverageDistance(latestResult.targets),
-    //                 driveState.Speeds
-    //             );
-              
-    //             if(kUseVision){//if vision is enabled
-    //                 addVisionMeasurement(
-    //                     pose.estimatedPose.toPose2d(),
-    //                     latestResult.getTimestampSeconds(),
-    //                     stdDevs
-    //                 );
-    //             }
-
-    //             // report vision data
-    //             Pose2d visionPose = pose.estimatedPose.toPose2d();
-    //             String cameraName = camera.getName();
-    //             SmartDashboard.putNumberArray("Vision/Pose/" + cameraName, 
-    //                 new double[] {
-    //                     visionPose.getX(),
-    //                     visionPose.getY(),
-    //                     visionPose.getRotation().getDegrees()
-    //                 });
-                
-    //             // report ID
-    //             int[] targetIds = latestResult.targets.stream()
-    //                 .mapToInt(PhotonTrackedTarget::getFiducialId)
-    //                 .toArray();
-    //             SmartDashboard.putNumberArray("Vision/Targets/" + cameraName, 
-    //                 Arrays.stream(targetIds).asDoubleStream().toArray());
-
-    //             Logger.recordOutput("Vision/" + cameraName + "/Pose", pose.estimatedPose);
-    //         });
-    //     });
-    // }
-
-
-    /**
-     * Calculates adaptive standard deviations for vision pose estimation
-     * based on the number of AprilTags detected, their average distance,
-     * and the current drivetrain speed.
-     *
-     * @param tagCount   Number of detected AprilTags.
-     * @param avgDistance Average distance (in meters) from the camera to detected tags.
-     * @param speeds     Current chassis speeds of the drivetrain.
-     * @return A {@link Matrix} containing the standard deviations for X, Y, and rotation (θ).
-     */
-    // private Matrix<N3, N1> calculateAdaptiveStdDevs(int tagCount, double avgDistance, ChassisSpeeds speeds) {
-    //     double baseXY, baseTheta;
-        
-    //     // Set the base value based on the number of tags
-    //     if (tagCount >= 2) {
-    //         baseXY = 0.5;  
-    //         baseTheta = Math.toRadians(5); 
-    //     } else {
-    //         baseXY = 1.5 + avgDistance * 0.2; 
-    //         baseTheta = Math.toRadians(10 + avgDistance * 3); 
-    //     }
-
-    //     // Adjust dynamically based on speed
-    //     double speedFactor = Math.hypot(speeds.vxMetersPerSecond, speeds.vyMetersPerSecond) / 4.0; // suppose the speed max=4m/s
-    //     double rotationFactor = Math.abs(speeds.omegaRadiansPerSecond) / Math.PI; // suppose the angular_speed=π rad/s
-        
-    //     return VecBuilder.fill(
-    //         baseXY * (1 + speedFactor),       // X standard deviation
-    //         baseXY * (1 + speedFactor),       // Y standard deviation
-    //         baseTheta * (1 + rotationFactor)  // θ standard deviation
-    //     );
-    // }
-
-    /**
-     * Calculates the average Euclidean distance from the camera to all detected AprilTags.
-     *
-     * @param targets List of detected {@link PhotonTrackedTarget} objects.
-     * @return The average distance in meters, or 0.0 if no targets are present.
-     */
-    // private double calculateAverageDistance(List<PhotonTrackedTarget> targets) {
-    //     return targets.stream()
-    //         .mapToDouble(t -> t.getBestCameraToTarget().getTranslation().getNorm())
-    //         .average()
-    //         .orElse(0.0);
-    // }
 
     /**
      * Translates the robot to a target position and orientation using PID control.
@@ -509,13 +359,19 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     }
 
     /**
-     * Finds the closest scoring position (reef pose) based on AprilTag vision data.
+     * Determines the closest scoring position (reef pose) based on AprilTag vision data.
      * <p>
-     * This method collects all valid AprilTag targets from all cameras, identifies the
-     * nearest reef tag, and calculates the robot's optimal scoring position relative to it.
-     * If no valid tags are detected, it defaults to a predetermined tag ID.
+     * This method processes vision data from multiple cameras to identify valid AprilTag targets,
+     * selects the nearest reef tag, and calculates the optimal robot scoring position relative to it.
+     * If no valid tags are detected, a default tag ID is used as a fallback.
+     * <p>
+     * The scoring position is calculated by applying a transformation to the detected tag's pose,
+     * taking into account the robot's scoring side radius and branch offset.
      *
-     * @return The closest reef scoring {@link Pose2d} relative to the field.
+     * @param cameraEstimators A map of {@link PhotonCamera} to {@link PhotonPoseEstimator}, representing
+     *                         the cameras and their respective pose estimators.
+     * @return The closest reef scoring {@link Pose2d} relative to the field. If no valid tag is found,
+     *         the robot's current pose is returned as a fallback.
      */
     public Pose2d closestReefPose(Map<PhotonCamera, PhotonPoseEstimator> cameraEstimators) {
         List<PhotonTrackedTarget> allValidTargets = new ArrayList<>();
