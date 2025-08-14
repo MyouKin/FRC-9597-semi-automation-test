@@ -3,8 +3,11 @@
 // the WPILib BSD license file in the root directory of this project.
 package frc.robot;
 
+import java.util.List;
 import java.util.Set;
+import java.util.Map;
 
+import com.ctre.phoenix6.swerve.SwerveDrivetrain.SwerveDriveState;
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.AutoBuilder;
@@ -13,6 +16,8 @@ import com.pathplanner.lib.auto.NamedCommands;
 import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.RadiansPerSecond;
 import static edu.wpi.first.units.Units.RotationsPerSecond;
+
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -26,6 +31,8 @@ import frc.robot.Subsystems.Claw;
 import frc.robot.Subsystems.CommandSwerveDrivetrain;
 import frc.robot.Subsystems.DeepCage;
 import frc.robot.Subsystems.Elevator;
+import frc.robot.Subsystems.Vision;
+import frc.robot.Subsystems.Vision.VisionMeasurement;
 import frc.robot.commands.MagicSequencing;
 import frc.robot.generated.TunerConstants;
 
@@ -68,6 +75,7 @@ public class RobotContainer {
     public final Elevator elevator = new Elevator();
     public final CANdleSystem candle = new CANdleSystem(elevator);
     public final Claw claw = new Claw();
+    public final Vision vision = new Vision();
 
     //auto chooser
     private final SendableChooser<Command> autoChooser;
@@ -238,6 +246,17 @@ public class RobotContainer {
     // find the colset reef pose and run to it
     private Command runToClosestReef() {
         return  MagicSequencing.magicScoreNoScoreReef(drivetrain, () -> drivetrain.closestReefPose());
+    }
+
+
+    public void addMeasurements() {
+        SwerveDriveState driveState = drivetrain.getState();
+        List<VisionMeasurement> measurements = vision.processVisionData(driveState);
+
+        for (VisionMeasurement m : measurements) {
+            drivetrain.addVisionMeasurement(m.pose, m.timestamp, m.stdDevs);
+        }
+
     }
 
     public Command getAutonomousCommand() {

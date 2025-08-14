@@ -1,7 +1,6 @@
 package frc.robot.Subsystems;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -12,11 +11,8 @@ import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 
 import org.littletonrobotics.junction.AutoLogOutput;
-import org.littletonrobotics.junction.Logger;
-import org.photonvision.EstimatedRobotPose;
 import org.photonvision.PhotonCamera;
 import org.photonvision.PhotonPoseEstimator;
-import org.photonvision.PhotonPoseEstimator.PoseStrategy;
 import org.photonvision.targeting.PhotonPipelineResult;
 import org.photonvision.targeting.PhotonTrackedTarget;
 
@@ -34,16 +30,12 @@ import com.pathplanner.lib.path.PathConstraints;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.Matrix;
-import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform2d;
-import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
@@ -58,7 +50,6 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.PIDCommand;
 import edu.wpi.first.wpilibj2.command.Subsystem;
@@ -210,36 +201,36 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
         angleController.enableContinuousInput(0, 2 * Math.PI);
 
-        // initialize camera system
-        cameraEstimators.put(
-            new PhotonCamera("Camera_left"),
-            new PhotonPoseEstimator(
-                aprilTagFieldLayout,
-                PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
-                new Transform3d(
-                    new Translation3d(0.31, 0.31, 0.5),//z to elevator
-                    new Rotation3d(     
-                    0,
-                    Units.degreesToRadians(0),//pitch
-                    Units.degreesToRadians(0))//yaw
-                )
-            )
-        );
-        cameraEstimators.put(
-            new PhotonCamera("Camera_right"), 
-            new PhotonPoseEstimator(
-                aprilTagFieldLayout,
-                PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
-                new Transform3d(
-                    new Translation3d(0.31, -0.31, 0.5),
-                    new Rotation3d(     
-                        0,
-                        Units.degreesToRadians(0),//pitch
-                        Units.degreesToRadians(0))//yaw
-                )
-            )
-        );
-        System.out.println("finish camera initialization");
+        // // initialize camera system
+        // cameraEstimators.put(
+        //     new PhotonCamera("Camera_left"),
+        //     new PhotonPoseEstimator(
+        //         aprilTagFieldLayout,
+        //         PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
+        //         new Transform3d(
+        //             new Translation3d(0.31, 0.31, 0.5),//z to elevator
+        //             new Rotation3d(     
+        //             0,
+        //             Units.degreesToRadians(0),//pitch
+        //             Units.degreesToRadians(0))//yaw
+        //         )
+        //     )
+        // );
+        // cameraEstimators.put(
+        //     new PhotonCamera("Camera_right"), 
+        //     new PhotonPoseEstimator(
+        //         aprilTagFieldLayout,
+        //         PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
+        //         new Transform3d(
+        //             new Translation3d(0.31, -0.31, 0.5),
+        //             new Rotation3d(     
+        //                 0,
+        //                 Units.degreesToRadians(0),//pitch
+        //                 Units.degreesToRadians(0))//yaw
+        //         )
+        //     )
+        // );
+        // System.out.println("finish camera initialization");
 
         // Robot config
         RobotConfig robotConfig = null; // Initialize with null in case of exception
@@ -320,7 +311,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             });
         }
         //vision data processing 
-        processVisionData();
+        //processVisionData();
     }
 
     /**
@@ -332,66 +323,66 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
      *   Publishes vision pose, detected target IDs, and logs output for debugging.</li>
      * This should be called periodically (e.g., in {@code periodic()}) to keep vision-based localization up to date.
      */
-    private void processVisionData() {
-        //System.out.println("vision status "+kUseVision);
-        SwerveDriveState driveState = getState();
-        Pose2d odometryPose = driveState.Pose;
+    // private void processVisionData() {
+    //     //System.out.println("vision status "+kUseVision);
+    //     SwerveDriveState driveState = getState();
+    //     Pose2d odometryPose = driveState.Pose;
 
-        // report the pose of drivetrain
-        SmartDashboard.putNumberArray("Chassis/Pose", 
-            new double[] {
-                odometryPose.getX(),
-                odometryPose.getY(),
-                odometryPose.getRotation().getDegrees()
-            });
+    //     // report the pose of drivetrain
+    //     SmartDashboard.putNumberArray("Chassis/Pose", 
+    //         new double[] {
+    //             odometryPose.getX(),
+    //             odometryPose.getY(),
+    //             odometryPose.getRotation().getDegrees()
+    //         });
 
-        cameraEstimators.forEach((camera, estimator) -> {
-            List<PhotonPipelineResult> cameraResults = camera.getAllUnreadResults();
-            if (cameraResults.isEmpty()) return;
+    //     cameraEstimators.forEach((camera, estimator) -> {
+    //         List<PhotonPipelineResult> cameraResults = camera.getAllUnreadResults();
+    //         if (cameraResults.isEmpty()) return;
 
-            PhotonPipelineResult latestResult = cameraResults.get(cameraResults.size() - 1);
-            if (!latestResult.hasTargets()) return;
-            //System.out.println("size"+latestResult.targets.size());
+    //         PhotonPipelineResult latestResult = cameraResults.get(cameraResults.size() - 1);
+    //         if (!latestResult.hasTargets()) return;
+    //         //System.out.println("size"+latestResult.targets.size());
 
-            estimator.setReferencePose(odometryPose);
-            Optional<EstimatedRobotPose> estimatedPose = estimator.update(latestResult);
+    //         estimator.setReferencePose(odometryPose);
+    //         Optional<EstimatedRobotPose> estimatedPose = estimator.update(latestResult);
             
-            estimatedPose.ifPresent(pose -> {
-                Matrix<N3, N1> stdDevs = calculateAdaptiveStdDevs(
-                    latestResult.targets.size(),
-                    calculateAverageDistance(latestResult.targets),
-                    driveState.Speeds
-                );
+    //         estimatedPose.ifPresent(pose -> {
+    //             Matrix<N3, N1> stdDevs = calculateAdaptiveStdDevs(
+    //                 latestResult.targets.size(),
+    //                 calculateAverageDistance(latestResult.targets),
+    //                 driveState.Speeds
+    //             );
               
-                if(kUseVision){//if vision is enabled
-                    addVisionMeasurement(
-                        pose.estimatedPose.toPose2d(),
-                        latestResult.getTimestampSeconds(),
-                        stdDevs
-                    );
-                }
+    //             if(kUseVision){//if vision is enabled
+    //                 addVisionMeasurement(
+    //                     pose.estimatedPose.toPose2d(),
+    //                     latestResult.getTimestampSeconds(),
+    //                     stdDevs
+    //                 );
+    //             }
 
-                // report vision data
-                Pose2d visionPose = pose.estimatedPose.toPose2d();
-                String cameraName = camera.getName();
-                SmartDashboard.putNumberArray("Vision/Pose/" + cameraName, 
-                    new double[] {
-                        visionPose.getX(),
-                        visionPose.getY(),
-                        visionPose.getRotation().getDegrees()
-                    });
+    //             // report vision data
+    //             Pose2d visionPose = pose.estimatedPose.toPose2d();
+    //             String cameraName = camera.getName();
+    //             SmartDashboard.putNumberArray("Vision/Pose/" + cameraName, 
+    //                 new double[] {
+    //                     visionPose.getX(),
+    //                     visionPose.getY(),
+    //                     visionPose.getRotation().getDegrees()
+    //                 });
                 
-                // report ID
-                int[] targetIds = latestResult.targets.stream()
-                    .mapToInt(PhotonTrackedTarget::getFiducialId)
-                    .toArray();
-                SmartDashboard.putNumberArray("Vision/Targets/" + cameraName, 
-                    Arrays.stream(targetIds).asDoubleStream().toArray());
+    //             // report ID
+    //             int[] targetIds = latestResult.targets.stream()
+    //                 .mapToInt(PhotonTrackedTarget::getFiducialId)
+    //                 .toArray();
+    //             SmartDashboard.putNumberArray("Vision/Targets/" + cameraName, 
+    //                 Arrays.stream(targetIds).asDoubleStream().toArray());
 
-                Logger.recordOutput("Vision/" + cameraName + "/Pose", pose.estimatedPose);
-            });
-        });
-    }
+    //             Logger.recordOutput("Vision/" + cameraName + "/Pose", pose.estimatedPose);
+    //         });
+    //     });
+    // }
 
 
     /**
@@ -404,28 +395,28 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
      * @param speeds     Current chassis speeds of the drivetrain.
      * @return A {@link Matrix} containing the standard deviations for X, Y, and rotation (θ).
      */
-    private Matrix<N3, N1> calculateAdaptiveStdDevs(int tagCount, double avgDistance, ChassisSpeeds speeds) {
-        double baseXY, baseTheta;
+    // private Matrix<N3, N1> calculateAdaptiveStdDevs(int tagCount, double avgDistance, ChassisSpeeds speeds) {
+    //     double baseXY, baseTheta;
         
-        // Set the base value based on the number of tags
-        if (tagCount >= 2) {
-            baseXY = 0.5;  
-            baseTheta = Math.toRadians(5); 
-        } else {
-            baseXY = 1.5 + avgDistance * 0.2; 
-            baseTheta = Math.toRadians(10 + avgDistance * 3); 
-        }
+    //     // Set the base value based on the number of tags
+    //     if (tagCount >= 2) {
+    //         baseXY = 0.5;  
+    //         baseTheta = Math.toRadians(5); 
+    //     } else {
+    //         baseXY = 1.5 + avgDistance * 0.2; 
+    //         baseTheta = Math.toRadians(10 + avgDistance * 3); 
+    //     }
 
-        // Adjust dynamically based on speed
-        double speedFactor = Math.hypot(speeds.vxMetersPerSecond, speeds.vyMetersPerSecond) / 4.0; // suppose the speed max=4m/s
-        double rotationFactor = Math.abs(speeds.omegaRadiansPerSecond) / Math.PI; // suppose the angular_speed=π rad/s
+    //     // Adjust dynamically based on speed
+    //     double speedFactor = Math.hypot(speeds.vxMetersPerSecond, speeds.vyMetersPerSecond) / 4.0; // suppose the speed max=4m/s
+    //     double rotationFactor = Math.abs(speeds.omegaRadiansPerSecond) / Math.PI; // suppose the angular_speed=π rad/s
         
-        return VecBuilder.fill(
-            baseXY * (1 + speedFactor),       // X standard deviation
-            baseXY * (1 + speedFactor),       // Y standard deviation
-            baseTheta * (1 + rotationFactor)  // θ standard deviation
-        );
-    }
+    //     return VecBuilder.fill(
+    //         baseXY * (1 + speedFactor),       // X standard deviation
+    //         baseXY * (1 + speedFactor),       // Y standard deviation
+    //         baseTheta * (1 + rotationFactor)  // θ standard deviation
+    //     );
+    // }
 
     /**
      * Calculates the average Euclidean distance from the camera to all detected AprilTags.
@@ -433,12 +424,12 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
      * @param targets List of detected {@link PhotonTrackedTarget} objects.
      * @return The average distance in meters, or 0.0 if no targets are present.
      */
-    private double calculateAverageDistance(List<PhotonTrackedTarget> targets) {
-        return targets.stream()
-            .mapToDouble(t -> t.getBestCameraToTarget().getTranslation().getNorm())
-            .average()
-            .orElse(0.0);
-    }
+    // private double calculateAverageDistance(List<PhotonTrackedTarget> targets) {
+    //     return targets.stream()
+    //         .mapToDouble(t -> t.getBestCameraToTarget().getTranslation().getNorm())
+    //         .average()
+    //         .orElse(0.0);
+    // }
 
     /**
      * Translates the robot to a target position and orientation using PID control.
